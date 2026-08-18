@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Pass — Inventory &amp; Attendance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,900&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#262220;
+    --ink-soft:#5b544d;
+    --paper:#F7F2E9;
+    --paper-2:#EFE8D8;
+    --charcoal:#211E1B;
+    --charcoal-2:#322C27;
+    --charcoal-3:#413a33;
+    --sage:#435A45;
+    --sage-light:#6b8a6d;
+    --paprika:#BC4B27;
+    --paprika-light:#e5c4b4;
+    --brass:#B08D57;
+    --brass-light:#e9dcc3;
+    --line:#E2D9C4;
+    --white:#FFFDF8;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.display{font-family:'Fraunces',serif;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  #app{display:flex;min-height:100vh;}
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    width:250px;flex-shrink:0;
+    background:var(--charcoal);
+    color:var(--paper);
+    display:flex;flex-direction:column;
+    padding:22px 16px;
+    position:sticky;top:0;height:100vh;overflow-y:auto;
+  }
+  .brand{padding:2px 6px 20px 6px;border-bottom:1px solid #ffffff1a;margin-bottom:18px;}
+  .brand .mark{font-size:11px;letter-spacing:.18em;color:var(--brass);text-transform:uppercase;font-family:'IBM Plex Mono',monospace;}
+  .brand h1{font-size:24px;margin:4px 0 0 0;font-weight:600;color:var(--white);line-height:1.15;}
+
+  .nav-label{font-size:10.5px;letter-spacing:.15em;text-transform:uppercase;color:#a89d8f;margin:16px 8px 8px;font-family:'IBM Plex Mono',monospace;}
+  .nav-item{
+    display:flex;align-items:center;gap:10px;
+    padding:9px 10px;border-radius:6px;
+    color:#d8cfc0;font-size:14.5px;font-weight:500;
+    cursor:pointer;margin-bottom:2px;transition:background .12s;
+    border:none;background:none;width:100%;text-align:left;font-family:'Inter',sans-serif;
+  }
+  .nav-item svg{flex-shrink:0;opacity:.85;}
+  .nav-item:hover{background:#ffffff10;}
+  .nav-item.active{background:var(--sage);color:var(--white);}
+  .nav-item.active svg{opacity:1;}
+
+  .ticket-list{display:flex;flex-direction:column;gap:7px;}
+  .ticket{
+    position:relative;
+    background:var(--charcoal-2);
+    border:1px dashed #8a7c68;
+    border-radius:2px;
+    padding:9px 11px 9px 12px;
+    cursor:pointer;
+    transition:background .12s, border-color .12s;
+  }
+  .ticket:hover{background:var(--charcoal-3);}
+  .ticket.active{background:var(--sage);border-color:var(--sage-light);border-style:solid;}
+  .ticket .t-name{font-size:13.5px;font-weight:600;color:var(--white);}
+  .ticket .t-meta{font-size:11px;color:#c9bfab;font-family:'IBM Plex Mono',monospace;margin-top:2px;}
+  .ticket.active .t-meta{color:#eee5d6;}
+  .ticket input.rename{
+    width:100%;background:#00000030;border:1px solid var(--brass);border-radius:3px;
+    color:var(--white);font-size:13.5px;font-weight:600;padding:3px 5px;font-family:'Inter',sans-serif;
+  }
+  .rename-btn{position:absolute;top:8px;right:8px;opacity:0;transition:opacity .12s;background:none;border:none;cursor:pointer;padding:2px;}
+  .ticket:hover .rename-btn{opacity:.7;}
+  .rename-btn:hover{opacity:1 !important;}
+  .rename-btn svg{width:12px;height:12px;stroke:#e8dfcd;}
+
+  /* ---------- Main ---------- */
+  .main{flex:1;padding:32px 40px;max-width:1180px;}
+  .topbar{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:26px;flex-wrap:wrap;gap:12px;}
+  .topbar h2{font-size:28px;margin:0;font-weight:600;}
+  .topbar .sub{color:var(--ink-soft);font-size:14px;margin-top:4px;}
+  .btn{
+    font-family:'Inter',sans-serif;font-weight:600;font-size:13.5px;
+    padding:9px 16px;border-radius:6px;border:1px solid var(--ink);
+    background:var(--ink);color:var(--white);cursor:pointer;
+    display:inline-flex;align-items:center;gap:7px;transition:opacity .12s, transform .08s;
+  }
+  .btn:hover{opacity:.88;}
+  .btn:active{transform:scale(.98);}
+  .btn.secondary{background:transparent;color:var(--ink);border:1px solid var(--line);}
+  .btn.secondary:hover{background:var(--paper-2);opacity:1;}
+  .btn.danger{background:var(--paprika);border-color:var(--paprika);}
+  .btn.small{padding:6px 11px;font-size:12.5px;}
+
+  /* ---------- Cards / Dashboard ---------- */
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px;}
+  .card{
+    background:var(--white);border:1px solid var(--line);border-radius:10px;padding:18px 18px;
+  }
+  .card .label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;}
+  .card .num{font-size:30px;font-weight:600;margin-top:6px;font-family:'Fraunces',serif;}
+  .card .num.alert{color:var(--paprika);}
+  .card .foot{font-size:12.5px;color:var(--ink-soft);margin-top:4px;}
+
+  .section-title{font-size:15px;font-weight:700;margin:0 0 12px 0;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:8px;}
+  .panel{background:var(--white);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:22px;}
+
+  table{width:100%;border-collapse:collapse;}
+  th{text-align:left;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line);}
+  td{padding:10px 10px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  tr:hover td{background:#faf7ef;}
+
+  .loc-row{display:flex;justify-content:space-between;align-items:center;padding:9px 4px;border-bottom:1px solid var(--line);}
+  .loc-row:last-child{border-bottom:none;}
+  .loc-row .name{font-weight:600;font-size:14.5px;}
+  .loc-row .stats{display:flex;gap:22px;font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink-soft);}
+  .loc-row .stats b{color:var(--ink);}
+
+  /* ---------- Inventory ---------- */
+  .filters{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
+  input[type=text], input[type=number], input[type=date], input[type=time], select, textarea{
+    font-family:'Inter',sans-serif;font-size:13.5px;padding:8px 10px;border:1px solid var(--line);
+    border-radius:6px;background:var(--white);color:var(--ink);
+  }
+  input:focus, select:focus, textarea:focus{outline:2px solid var(--brass);outline-offset:0;border-color:var(--brass);}
+  .cat-badge{
+    font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;
+    background:var(--brass-light);color:#7a5f30;font-family:'IBM Plex Mono',monospace;white-space:nowrap;
+  }
+  .par-bar-wrap{width:90px;height:6px;background:var(--paper-2);border-radius:4px;overflow:hidden;margin-top:4px;}
+  .par-bar{height:100%;border-radius:4px;}
+  .qty-cell .q{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:14px;}
+  .low-flag{display:inline-flex;align-items:center;gap:4px;color:var(--paprika);font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;margin-top:3px;}
+  .row-actions{display:flex;gap:6px;}
+  .icon-btn{background:none;border:none;cursor:pointer;padding:5px;border-radius:5px;display:flex;}
+  .icon-btn:hover{background:var(--paper-2);}
+  .icon-btn svg{width:15px;height:15px;stroke:var(--ink-soft);}
+  .icon-btn.del:hover svg{stroke:var(--paprika);}
+  .empty-state{text-align:center;padding:50px 20px;color:var(--ink-soft);}
+  .empty-state .sig{font-size:38px;margin-bottom:8px;}
+
+  /* ---------- Attendance ---------- */
+  .att-toolbar{display:flex;gap:12px;align-items:center;margin-bottom:18px;flex-wrap:wrap;}
+  .status-btn{
+    font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600;padding:6px 10px;
+    border-radius:5px;border:1px solid var(--line);background:var(--white);cursor:pointer;
+    color:var(--ink-soft);transition:all .1s;
+  }
+  .status-btn:hover{border-color:var(--ink);}
+  .status-btn.sel-present{background:var(--sage);border-color:var(--sage);color:white;}
+  .status-btn.sel-late{background:var(--brass);border-color:var(--brass);color:white;}
+  .status-btn.sel-absent{background:var(--paprika);border-color:var(--paprika);color:white;}
+  .status-btn.sel-off{background:#8a8378;border-color:#8a8378;color:white;}
+  .status-group{display:flex;gap:5px;}
+  .time-inputs{display:flex;gap:6px;align-items:center;}
+  .time-inputs input{width:100px;padding:5px 7px;font-size:12px;}
+  .emp-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 4px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+  .emp-row:last-child{border-bottom:none;}
+  .emp-name{font-weight:600;font-size:14.5px;min-width:150px;}
+  .emp-role{font-size:12px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;}
+  .dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px;}
+  .dot.present{background:var(--sage);} .dot.late{background:var(--brass);} .dot.absent{background:var(--paprika);} .dot.off{background:#8a8378;}
+  .summary-chip{display:flex;flex-direction:column;align-items:center;padding:10px 16px;border-right:1px solid var(--line);}
+  .summary-chip:last-child{border-right:none;}
+  .summary-chip .n{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;}
+  .summary-chip .l{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);margin-top:2px;}
+
+  /* ---------- Modal ---------- */
+  .overlay{
+    position:fixed;inset:0;background:#211E1Bcc;display:flex;align-items:center;justify-content:center;
+    z-index:100;padding:20px;
+  }
+  .modal{
+    background:var(--white);border-radius:12px;padding:26px 28px;width:100%;max-width:440px;
+    max-height:88vh;overflow-y:auto;
+  }
+  .modal h3{margin:0 0 18px 0;font-size:20px;}
+  .field{margin-bottom:14px;display:flex;flex-direction:column;gap:5px;}
+  .field label{font-size:12px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;}
+  .field input, .field select, .field textarea{width:100%;}
+  .field-row{display:flex;gap:10px;}
+  .field-row .field{flex:1;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
+
+  .toast{
+    position:fixed;bottom:22px;left:50%;transform:translateX(-50%);
+    background:var(--ink);color:var(--white);padding:10px 18px;border-radius:20px;
+    font-size:13px;font-weight:500;box-shadow:0 6px 20px #0003;z-index:200;
+    opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px);}
+
+  @media(max-width:880px){
+    #app{flex-direction:column;}
+    .sidebar{width:100%;height:auto;position:relative;flex-direction:row;flex-wrap:wrap;}
+    .main{padding:20px;}
+    .grid{grid-template-columns:1fr 1fr;}
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===================== ICONS ===================== */
+const ICONS = {
+  dashboard:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>',
+  inventory:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>',
+  attendance:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M9 16l2 2 4-4"/></svg>',
+  employees:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  edit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>',
+  trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>',
+  plus:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  download:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>',
+  alert:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>',
+};
+
+/* ===================== STATE ===================== */
+let state = {
+  locations: [],
+  inventory: [],
+  employees: [],
+  attendance: [],
+  activeLocationId: null,
+  activeView: 'dashboard',
+  loaded: false,
+  invSearch: '',
+  invCatFilter: 'All',
+  attDate: new Date().toISOString().slice(0,10),
+  renamingLocId: null,
+};
+
+const CATEGORIES = ['Produce','Meat & Seafood','Dairy','Dry Goods & Pantry','Beverages','Cleaning & Supplies','Other'];
+const STATUS_META = {
+  present:{label:'Present', cls:'present'},
+  late:{label:'Late', cls:'late'},
+  absent:{label:'Absent', cls:'absent'},
+  off:{label:'Day Off', cls:'off'},
+};
+
+function uid(){ return Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4); }
+function money(n){ return '$' + Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+
+/* ===================== STORAGE ===================== */
+async function loadAll(){
+  try{
+    const [locRes, invRes, empRes, attRes] = await Promise.all([
+      safeGet('locations'), safeGet('inventory'), safeGet('employees'), safeGet('attendance')
+    ]);
+    state.locations = locRes ? JSON.parse(locRes.value) : defaultLocations();
+    state.inventory = invRes ? JSON.parse(invRes.value) : [];
+    state.employees = empRes ? JSON.parse(empRes.value) : [];
+    state.attendance = attRes ? JSON.parse(attRes.value) : [];
+    if(!locRes) await saveLocations();
+    state.activeLocationId = state.locations[0].id;
+  }catch(e){
+    console.error('Load failed', e);
+    state.locations = defaultLocations();
+    state.activeLocationId = state.locations[0].id;
+  }
+  state.loaded = true;
+  render();
+}
+async function safeGet(key){
+  try{ return await window.storage.get(key, false); }catch(e){ return null; }
+}
+function defaultLocations(){
+  return [1,2,3,4,5].map(n => ({id: uid(), name: 'Location ' + n}));
+}
+async function saveLocations(){ try{ await window.storage.set('locations', JSON.stringify(state.locations), false);}catch(e){toast('Save failed — check connection');} }
+async function saveInventory(){ try{ await window.storage.set('inventory', JSON.stringify(state.inventory), false);}catch(e){toast('Save failed — check connection');} }
+async function saveEmployees(){ try{ await window.storage.set('employees', JSON.stringify(state.employees), false);}catch(e){toast('Save failed — check connection');} }
+async function saveAttendance(){ try{ await window.storage.set('attendance', JSON.stringify(state.attendance), false);}catch(e){toast('Save failed — check connection');} }
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ===================== DERIVED HELPERS ===================== */
+function locInventory(locId){ return state.inventory.filter(i=>i.locationId===locId); }
+function locEmployees(locId){ return state.employees.filter(e=>e.locationId===locId); }
+function locValue(locId){ return locInventory(locId).reduce((s,i)=>s + i.quantity*i.price, 0); }
+function locLowStock(locId){ return locInventory(locId).filter(i=> i.par!=null && i.quantity <= i.par); }
+function attendanceFor(empId, date){ return state.attendance.find(a=>a.employeeId===empId && a.date===date); }
+function todayAttendanceCounts(locId){
+  const emps = locEmployees(locId);
+  const date = todayStr();
+  let present=0, late=0, absent=0, off=0, unset=0;
+  emps.forEach(e=>{
+    const a = attendanceFor(e.id, date);
+    if(!a) unset++;
+    else if(a.status==='present') present++;
+    else if(a.status==='late') late++;
+    else if(a.status==='absent') absent++;
+    else if(a.status==='off') off++;
+  });
+  return {present, late, absent, off, unset, total: emps.length};
+}
+
+/* ===================== RENDER ROOT ===================== */
+function render(){
+  const app = document.getElementById('app');
+  if(!state.loaded){
+    app.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100vh;color:#8a8378;font-family:'IBM Plex Mono',monospace;">Loading the pass…</div>`;
+    return;
+  }
+  app.innerHTML = renderSidebar() + `<div class="main">${renderView()}</div>` + renderModal();
+  attachEvents();
+}
+
+function renderSidebar(){
+  const tickets = state.locations.map(loc=>{
+    const val = locValue(loc.id);
+    const low = locLowStock(loc.id).length;
+    if(state.renamingLocId === loc.id){
+      return `<div class="ticket active">
+        <input class="rename" data-loc-rename-input="${loc.id}" value="${escapeAttr(loc.name)}" />
+      </div>`;
+    }
+    return `<div class="ticket ${loc.id===state.activeLocationId?'active':''}" data-action="switch-location" data-id="${loc.id}">
+      <button class="rename-btn" data-action="rename-location" data-id="${loc.id}" title="Rename location">${ICONS.edit}</button>
+      <div class="t-name">${escapeHtml(loc.name)}</div>
+      <div class="t-meta">${money(val)} · ${low} low</div>
+    </div>`;
+  }).join('');
+
+  const navItems = [
+    ['dashboard','Dashboard'],
+    ['inventory','Inventory'],
+    ['attendance','Attendance'],
+    ['employees','Employees'],
+  ].map(([key,label])=>`
+    <button class="nav-item ${state.activeView===key?'active':''}" data-action="switch-view" data-view="${key}">
+      ${ICONS[key]}<span>${label}</span>
+    </button>`).join('');
+
+  return `<div class="sidebar">
+    <div class="brand">
+      <div class="mark">Back of House</div>
+      <h1>The Pass</h1>
+    </div>
+    <div class="nav-label">Menu</div>
+    ${navItems}
+    <div class="nav-label">Locations</div>
+    <div class="ticket-list">${tickets}</div>
+  </div>`;
+}
+
+function renderView(){
+  switch(state.activeView){
+    case 'dashboard': return renderDashboard();
+    case 'inventory': return renderInventory();
+    case 'attendance': return renderAttendance();
+    case 'employees': return renderEmployees();
+    default: return '';
+  }
+}
+
+/* ===================== DASHBOARD ===================== */
+function renderDashboard(){
+  const totalValue = state.locations.reduce((s,l)=>s+locValue(l.id),0);
+  const totalLow = state.locations.reduce((s,l)=>s+locLowStock(l.id).length,0);
+  const totalItems = state.inventory.length;
+  const totalEmployees = state.employees.length;
+
+  let present=0, late=0, absent=0, off=0, unset=0, totalToday=0;
+  state.locations.forEach(l=>{
+    const c = todayAttendanceCounts(l.id);
+    present+=c.present; late+=c.late; absent+=c.absent; off+=c.off; unset+=c.unset; totalToday+=c.total;
+  });
+
+  const rows = state.locations.map(l=>{
+    const val = locValue(l.id);
+    const low = locLowStock(l.id).length;
+    const c = todayAttendanceCounts(l.id);
+    return `<div class="loc-row">
+      <div class="name">${escapeHtml(l.name)}</div>
+      <div class="stats">
+        <span>${locInventory(l.id).length} items</span>
+        <span><b>${money(val)}</b></span>
+        <span style="color:${low>0?'var(--paprika)':'var(--ink-soft)'}">${low} low stock</span>
+        <span><b>${c.present+c.late}</b>/${c.total} in today</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  const lowItems = state.inventory.filter(i=>i.par!=null && i.quantity<=i.par);
+  const lowList = lowItems.length ? lowItems.slice(0,8).map(i=>{
+    const loc = state.locations.find(l=>l.id===i.locationId);
+    return `<div class="loc-row">
+      <div class="name">${escapeHtml(i.name)} <span style="color:var(--ink-soft);font-weight:400;font-size:12.5px;">— ${escapeHtml(loc?loc.name:'')}</span></div>
+      <div class="stats"><span class="mono">${i.quantity} ${escapeHtml(i.unit||'')} on hand</span><span class="mono" style="color:var(--paprika)">par ${i.par}</span></div>
+    </div>`;
+  }).join('') : `<div class="empty-state" style="padding:24px;"><div class="sig">✓</div>All stock is above par across every location.</div>`;
+
+  return `
+    <div class="topbar">
+      <div><h2>Dashboard</h2><div class="sub">All five locations, at a glance</div></div>
+    </div>
+    <div class="grid">
+      <div class="card"><div class="label">Total Inventory Value</div><div class="num mono">${money(totalValue)}</div><div class="foot">${totalItems} items tracked</div></div>
+      <div class="card"><div class="label">Low Stock Alerts</div><div class="num mono ${totalLow>0?'alert':''}">${totalLow}</div><div class="foot">across ${state.locations.length} locations</div></div>
+      <div class="card"><div class="label">On Shift Today</div><div class="num mono">${present+late}<span style="font-size:16px;color:var(--ink-soft);">/${totalToday}</span></div><div class="foot">${late} late · ${absent} absent · ${off} off</div></div>
+      <div class="card"><div class="label">Total Staff</div><div class="num mono">${totalEmployees}</div><div class="foot">${state.locations.length} locations</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Locations</div>
+      ${rows}
+    </div>
+
+    <div class="panel">
+      <div class="section-title" style="color:var(--paprika);">${ICONS.alert} Needs Reordering</div>
+      ${lowList}
+    </div>
+  `;
+}
+
+/* ===================== INVENTORY ===================== */
+function renderInventory(){
+  const loc = state.locations.find(l=>l.id===state.activeLocationId);
+  let items = locInventory(loc.id);
+  if(state.invSearch.trim()){
+    const q = state.invSearch.toLowerCase();
+    items = items.filter(i=>i.name.toLowerCase().includes(q) || (i.supplier||'').toLowerCase().includes(q));
+  }
+  if(state.invCatFilter !== 'All'){
+    items = items.filter(i=>i.category===state.invCatFilter);
+  }
+  items = items.slice().sort((a,b)=>a.name.localeCompare(b.name));
+
+  const totalVal = locValue(loc.id);
+  const catOptions = ['All',...CATEGORIES].map(c=>`<option value="${c}" ${state.invCatFilter===c?'selected':''}>${c}</option>`).join('');
+
+  const rows = items.map(i=>{
+    const total = i.quantity * i.price;
+    const isLow = i.par!=null && i.quantity <= i.par;
+    const pct = i.par ? Math.min(100, Math.round((i.quantity/(i.par*2||1))*100)) : 100;
+    return `<tr>
+      <td>
+        <div style="font-weight:600;">${escapeHtml(i.name)}</div>
+        ${i.supplier ? `<div style="font-size:12px;color:var(--ink-soft);">${escapeHtml(i.supplier)}</div>`:''}
+      </td>
+      <td><span class="cat-badge">${escapeHtml(i.category)}</span></td>
+      <td class="qty-cell">
+        <span class="q">${i.quantity} <span style="font-weight:400;font-size:12px;color:var(--ink-soft);">${escapeHtml(i.unit||'')}</span></span>
+        ${i.par!=null ? `<div class="par-bar-wrap"><div class="par-bar" style="width:${pct}%;background:${isLow?'var(--paprika)':'var(--sage)'}"></div></div>` : ''}
+        ${isLow ? `<div class="low-flag">${ICONS.alert} below par (${i.par})</div>` : ''}
+      </td>
+      <td class="mono">${money(i.price)}</td>
+      <td class="mono" style="font-weight:600;">${money(total)}</td>
+      <td>
+        <div class="row-actions">
+          <button class="icon-btn" data-action="open-item-modal" data-id="${i.id}" title="Edit">${ICONS.edit}</button>
+          <button class="icon-btn del" data-action="delete-item" data-id="${i.id}" title="Delete">${ICONS.trash}</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div class="topbar">
+      <div><h2>Inventory — ${escapeHtml(loc.name)}</h2><div class="sub">${items.length} items shown · ${money(totalVal)} total value at this location</div></div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn secondary" data-action="export-inventory">${ICONS.download} Export CSV</button>
+        <button class="btn" data-action="open-item-modal">${ICONS.plus} Add Item</button>
+      </div>
+    </div>
+    <div class="filters">
+      <input type="text" placeholder="Search items or supplier…" value="${escapeAttr(state.invSearch)}" data-action="inv-search" style="width:240px;">
+      <select data-action="inv-cat-filter">${catOptions}</select>
+    </div>
+    <div class="panel" style="padding:0;">
+      ${items.length ? `<table>
+        <thead><tr><th>Item</th><th>Category</th><th>On Hand</th><th>Unit Price</th><th>Total Value</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>` : `<div class="empty-state"><div class="sig">🧺</div>No inventory yet for ${escapeHtml(loc.name)}.<br><br><button class="btn" data-action="open-item-modal">${ICONS.plus} Add your first item</button></div>`}
+    </div>
+  `;
+}
+
+/* ===================== EMPLOYEES ===================== */
+function renderEmployees(){
+  const loc = state.locations.find(l=>l.id===state.activeLocationId);
+  const emps = locEmployees(loc.id).slice().sort((a,b)=>a.name.localeCompare(b.name));
+  const rows = emps.map(e=>{
+    return `<tr>
+      <td style="font-weight:600;">${escapeHtml(e.name)}</td>
+      <td><span class="cat-badge" style="background:var(--paper-2);color:var(--ink-soft);">${escapeHtml(e.role||'—')}</span></td>
+      <td class="mono">${e.phone ? escapeHtml(e.phone) : '—'}</td>
+      <td>
+        <div class="row-actions">
+          <button class="icon-btn" data-action="open-employee-modal" data-id="${e.id}" title="Edit">${ICONS.edit}</button>
+          <button class="icon-btn del" data-action="delete-employee" data-id="${e.id}" title="Remove">${ICONS.trash}</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div class="topbar">
+      <div><h2>Employees — ${escapeHtml(loc.name)}</h2><div class="sub">${emps.length} staff assigned to this location</div></div>
+      <button class="btn" data-action="open-employee-modal">${ICONS.plus} Add Employee</button>
+    </div>
+    <div class="panel" style="padding:0;">
+      ${emps.length ? `<table>
+        <thead><tr><th>Name</th><th>Role</th><th>Phone</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>` : `<div class="empty-state"><div class="sig">👤</div>No staff added yet for ${escapeHtml(loc.name)}.<br><br><button class="btn" data-action="open-employee-modal">${ICONS.plus} Add your first employee</button></div>`}
+    </div>
+  `;
+}
+
+/* ===================== ATTENDANCE ===================== */
+function renderAttendance(){
+  const loc = state.locations.find(l=>l.id===state.activeLocationId);
+  const emps = locEmployees(loc.id).slice().sort((a,b)=>a.name.localeCompare(b.name));
+  const date = state.attDate;
+
+  let present=0,late=0,absent=0,off=0,unset=0;
+  const empRows = emps.map(e=>{
+    const a = attendanceFor(e.id, date);
+    const status = a ? a.status : null;
+    if(!status) unset++; else if(status==='present') present++; else if(status==='late') late++; else if(status==='absent') absent++; else if(status==='off') off++;
+
+    const btns = ['present','late','absent','off'].map(s=>{
+      const sel = status===s ? ` sel-${s}` : '';
+      return `<button class="status-btn${sel}" data-action="set-status" data-emp="${e.id}" data-status="${s}">${STATUS_META[s].label}</button>`;
+    }).join('');
+
+    const showTimes = status==='present' || status==='late';
+    return `<div class="emp-row">
+      <div style="min-width:170px;">
+        <div class="emp-name">${escapeHtml(e.name)}</div>
+        <div class="emp-role">${escapeHtml(e.role||'Staff')}</div>
+      </div>
+      <div class="status-group">${btns}</div>
+      ${showTimes ? `<div class="time-inputs">
+        <input type="time" value="${a && a.clockIn ? a.clockIn : ''}" data-action="set-time" data-emp="${e.id}" data-field="clockIn" placeholder="Clock in">
+        <span class="mono" style="color:var(--ink-soft);font-size:12px;">to</span>
+        <input type="time" value="${a && a.clockOut ? a.clockOut : ''}" data-action="set-time" data-emp="${e.id}" data-field="clockOut" placeholder="Clock out">
+      </div>` : `<div style="width:216px;"></div>`}
+    </div>`;
+  }).join('');
+
+  const empIds = new Set(emps.map(e=>e.id));
+  const history = state.attendance
+    .filter(a=>empIds.has(a.employeeId))
+    .sort((a,b)=> b.date.localeCompare(a.date))
+    .slice(0,40);
+  const histRows = history.map(a=>{
+    const e = state.employees.find(x=>x.id===a.employeeId);
+    if(!e) return '';
+    const m = STATUS_META[a.status];
+    return `<tr>
+      <td class="mono">${a.date}</td>
+      <td>${escapeHtml(e.name)}</td>
+      <td><span class="dot ${m.cls}"></span>${m.label}</td>
+      <td class="mono">${a.clockIn || '—'} ${a.clockOut ? '– '+a.clockOut : ''}</td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div class="topbar">
+      <div><h2>Attendance — ${escapeHtml(loc.name)}</h2><div class="sub">${emps.length} staff · tracking for ${date}</div></div>
+      <input type="date" value="${date}" data-action="att-date" >
+    </div>
+
+    <div class="panel" style="display:flex;padding:0;overflow:hidden;">
+      <div class="summary-chip"><div class="n mono" style="color:var(--sage);">${present}</div><div class="l">Present</div></div>
+      <div class="summary-chip"><div class="n mono" style="color:var(--brass);">${late}</div><div class="l">Late</div></div>
+      <div class="summary-chip"><div class="n mono" style="color:var(--paprika);">${absent}</div><div class="l">Absent</div></div>
+      <div class="summary-chip"><div class="n mono" style="color:#8a8378;">${off}</div><div class="l">Day Off</div></div>
+      <div class="summary-chip"><div class="n mono">${unset}</div><div class="l">Not Marked</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Mark Attendance</div>
+      ${emps.length ? empRows : `<div class="empty-state"><div class="sig">🗓️</div>No staff assigned to ${escapeHtml(loc.name)} yet. Add employees first.</div>`}
+    </div>
+
+    ${history.length ? `<div class="panel">
+      <div class="section-title">Recent History</div>
+      <table>
+        <thead><tr><th>Date</th><th>Employee</th><th>Status</th><th>Time</th></tr></thead>
+        <tbody>${histRows}</tbody>
+      </table>
+    </div>` : ''}
+  `;
+}
+
+/* ===================== MODAL ===================== */
+let modalState = null;
+
+function renderModal(){
+  if(!modalState) return '';
+  if(modalState.type === 'item'){
+    const editing = modalState.editId ? state.inventory.find(i=>i.id===modalState.editId) : null;
+    const catOpts = CATEGORIES.map(c=>`<option value="${c}" ${editing&&editing.category===c?'selected':''}>${c}</option>`).join('');
+    return `<div class="overlay" data-action="close-modal-bg">
+      <div class="modal" data-stop>
+        <h3>${editing?'Edit Item':'Add Inventory Item'}</h3>
+        <form id="item-form">
+          <div class="field"><label>Item Name</label><input type="text" name="name" required value="${editing?escapeAttr(editing.name):''}" placeholder="e.g. Chicken Breast"></div>
+          <div class="field-row">
+            <div class="field"><label>Category</label><select name="category">${catOpts}</select></div>
+            <div class="field"><label>Unit</label><input type="text" name="unit" list="unit-list" value="${editing?escapeAttr(editing.unit||''):''}" placeholder="lb, case, gal…"></div>
+          </div>
+          <datalist id="unit-list"><option value="lb"><option value="oz"><option value="kg"><option value="g"><option value="gal"><option value="qt"><option value="L"><option value="ml"><option value="each"><option value="case"><option value="box"><option value="dozen"></datalist>
+          <div class="field-row">
+            <div class="field"><label>Quantity On Hand</label><input type="number" step="0.01" min="0" name="quantity" required value="${editing?editing.quantity:''}"></div>
+            <div class="field"><label>Price per Unit</label><input type="number" step="0.01" min="0" name="price" required value="${editing?editing.price:''}"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Reorder Par Level</label><input type="number" step="0.01" min="0" name="par" value="${editing&&editing.par!=null?editing.par:''}" placeholder="Optional"></div>
+            <div class="field"><label>Supplier</label><input type="text" name="supplier" value="${editing?escapeAttr(editing.supplier||''):''}" placeholder="Optional"></div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn secondary" data-action="close-modal">Cancel</button>
+            <button type="submit" class="btn">${editing?'Save Changes':'Add Item'}</button>
+          </div>
+        </form>
+      </div>
+    </div>`;
+  }
+  if(modalState.type === 'employee'){
+    const editing = modalState.editId ? state.employees.find(e=>e.id===modalState.editId) : null;
+    return `<div class="overlay" data-action="close-modal-bg">
+      <div class="modal" data-stop>
+        <h3>${editing?'Edit Employee':'Add Employee'}</h3>
+        <form id="employee-form">
+          <div class="field"><label>Full Name</label><input type="text" name="name" required value="${editing?escapeAttr(editing.name):''}" placeholder="e.g. Maria Lopez"></div>
+          <div class="field-row">
+            <div class="field"><label>Role</label><input type="text" name="role" value="${editing?escapeAttr(editing.role||''):''}" placeholder="Line Cook, Server…"></div>
+            <div class="field"><label>Phone (optional)</label><input type="text" name="phone" value="${editing?escapeAttr(editing.phone||''):''}" placeholder="Optional"></div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn secondary" data-action="close-modal">Cancel</button>
+            <button type="submit" class="btn">${editing?'Save Changes':'Add Employee'}</button>
+          </div>
+        </form>
+      </div>
+    </div>`;
+  }
+  return '';
+}
+
+/* ===================== EVENTS ===================== */
+function attachEvents(){
+  const app = document.getElementById('app');
+
+  app.onclick = async (e)=>{
+    const el = e.target.closest('[data-action]');
+    if(!el){
+      if(e.target.closest('[data-stop]')) return;
+      if(e.target.matches('.overlay')) closeModal();
+      return;
+    }
+    const action = el.dataset.action;
+
+    if(action==='switch-location'){ state.activeLocationId = el.dataset.id; state.renamingLocId=null; render(); }
+    else if(action==='switch-view'){ state.activeView = el.dataset.view; render(); }
+    else if(action==='rename-location'){ e.stopPropagation(); state.renamingLocId = el.dataset.id; render();
+      const input = document.querySelector(`[data-loc-rename-input]`);
+      if(input){ input.focus(); input.select(); }
+    }
+    else if(action==='open-item-modal'){ modalState = {type:'item', editId: el.dataset.id || null}; render(); }
+    else if(action==='open-employee-modal'){ modalState = {type:'employee', editId: el.dataset.id || null}; render(); }
+    else if(action==='close-modal' || action==='close-modal-bg'){ if(action==='close-modal-bg' && e.target !== el) return; closeModal(); }
+    else if(action==='delete-item'){
+      if(confirm('Delete this inventory item? This cannot be undone.')){
+        state.inventory = state.inventory.filter(i=>i.id!==el.dataset.id);
+        await saveInventory(); toast('Item deleted'); render();
+      }
+    }
+    else if(action==='delete-employee'){
+      if(confirm('Remove this employee? Their attendance history will be kept.')){
+        state.employees = state.employees.filter(x=>x.id!==el.dataset.id);
+        await saveEmployees(); toast('Employee removed'); render();
+      }
+    }
+    else if(action==='set-status'){
+      const empId = el.dataset.emp, status = el.dataset.status;
+      let rec = attendanceFor(empId, state.attDate);
+      if(rec && rec.status===status){
+        state.attendance = state.attendance.filter(a=>a!==rec);
+      } else if(rec){
+        rec.status = status;
+      } else {
+        state.attendance.push({id:uid(), employeeId:empId, date:state.attDate, status, clockIn:'', clockOut:''});
+      }
+      await saveAttendance(); render();
+    }
+    else if(action==='export-inventory'){ exportInventoryCSV(); }
+  };
+
+  app.onchange = async (e)=>{
+    const el = e.target.closest('[data-action]');
+    if(!el) return;
+    const action = el.dataset.action;
+    if(action==='inv-cat-filter'){ state.invCatFilter = el.value; render(); }
+    else if(action==='att-date'){ state.attDate = el.value; render(); }
+    else if(action==='set-time'){
+      const empId = el.dataset.emp, field = el.dataset.field;
+      let rec = attendanceFor(empId, state.attDate);
+      if(!rec){
+        rec = {id:uid(), employeeId:empId, date:state.attDate, status:'present', clockIn:'', clockOut:''};
+        state.attendance.push(rec);
+      }
+      rec[field] = el.value;
+      await saveAttendance(); render();
+    }
+  };
+
+  app.oninput = (e)=>{
+    const el = e.target.closest('[data-action]');
+    if(!el) return;
+    if(el.dataset.action==='inv-search'){
+      state.invSearch = el.value;
+      renderInventoryOnly();
+    }
+  };
+
+  app.addEventListener('keydown', async (e)=>{
+    if(e.target.matches('[data-loc-rename-input]') && e.key==='Enter'){ e.preventDefault(); await commitRename(e.target); }
+    if(e.target.matches('[data-loc-rename-input]') && e.key==='Escape'){ state.renamingLocId=null; render(); }
+  });
+  app.addEventListener('blur', async (e)=>{
+    if(e.target.matches && e.target.matches('[data-loc-rename-input]')){ await commitRename(e.target); }
+  }, true);
+
+  const itemForm = document.getElementById('item-form');
+  if(itemForm){
+    itemForm.onsubmit = async (ev)=>{
+      ev.preventDefault();
+      const fd = new FormData(itemForm);
+      const data = {
+        name: fd.get('name').trim(),
+        category: fd.get('category'),
+        unit: fd.get('unit').trim(),
+        quantity: parseFloat(fd.get('quantity')) || 0,
+        price: parseFloat(fd.get('price')) || 0,
+        par: fd.get('par') ? parseFloat(fd.get('par')) : null,
+        supplier: fd.get('supplier').trim(),
+      };
+      if(!data.name) return;
+      if(modalState.editId){
+        const item = state.inventory.find(i=>i.id===modalState.editId);
+        Object.assign(item, data);
+        toast('Item updated');
+      } else {
+        state.inventory.push({id:uid(), locationId: state.activeLocationId, ...data});
+        toast('Item added');
+      }
+      await saveInventory();
+      closeModal();
+    };
+  }
+  const empForm = document.getElementById('employee-form');
+  if(empForm){
+    empForm.onsubmit = async (ev)=>{
+      ev.preventDefault();
+      const fd = new FormData(empForm);
+      const data = { name: fd.get('name').trim(), role: fd.get('role').trim(), phone: fd.get('phone').trim() };
+      if(!data.name) return;
+      if(modalState.editId){
+        const emp = state.employees.find(x=>x.id===modalState.editId);
+        Object.assign(emp, data);
+        toast('Employee updated');
+      } else {
+        state.employees.push({id:uid(), locationId: state.activeLocationId, ...data});
+        toast('Employee added');
+      }
+      await saveEmployees();
+      closeModal();
+    };
+  }
+}
+
+async function commitRename(input){
+  const loc = state.locations.find(l=>l.id===state.renamingLocId);
+  if(loc){
+    const val = input.value.trim();
+    if(val) loc.name = val;
+  }
+  state.renamingLocId = null;
+  await saveLocations();
+  render();
+}
+
+function closeModal(){ modalState = null; render(); }
+
+function renderInventoryOnly(){
+  if(state.activeView !== 'inventory') return;
+  const main = document.querySelector('.main');
+  const searchInput = document.querySelector('[data-action="inv-search"]');
+  const cursorPos = searchInput ? searchInput.selectionStart : null;
+  main.innerHTML = renderView();
+  const newInput = document.querySelector('[data-action="inv-search"]');
+  if(newInput){ newInput.focus(); if(cursorPos!=null) newInput.setSelectionRange(cursorPos,cursorPos); }
+  attachEvents();
+}
+
+/* ===================== CSV EXPORT ===================== */
+function exportInventoryCSV(){
+  const loc = state.locations.find(l=>l.id===state.activeLocationId);
+  const items = locInventory(loc.id);
+  let csv = 'Item,Category,Quantity,Unit,Price Per Unit,Total Value,Par Level,Supplier\n';
+  items.forEach(i=>{
+    const row = [i.name, i.category, i.quantity, i.unit, i.price, (i.quantity*i.price).toFixed(2), i.par ?? '', i.supplier||''];
+    csv += row.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',') + '\n';
+  });
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `${loc.name.replace(/\s+/g,'-').toLowerCase()}-inventory.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ===================== UTIL ===================== */
+function escapeHtml(str){ return String(str).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(str){ return escapeHtml(str); }
+
+/* ===================== INIT ===================== */
+loadAll();
+</script>
+</body>
+</html>
